@@ -1,5 +1,10 @@
+import 'dart:convert';
+
+import 'package:exibe_imagens/src/models/image_model.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
+import 'widgets/image_list.dart';
 class App extends StatefulWidget {
   @override
   State<App> createState() {
@@ -8,12 +13,13 @@ class App extends StatefulWidget {
 }
 
 class AppState extends State<App> {
-  int numeroImagens = 0;
-  void obterImagem(){
+  int currentPage = 1;
+  List <ImageModel> imagens = [];
+  void obterImagem() async {
     var url = Uri.https(
       'api.pexels.com',
       '/v1/search',
-      {'query': 'whatever', 'page': '1', 'per_page': '1'}
+      {'query': 'whatever', 'page': '$currentPage', 'per_page': '1'}
     );
     var req = http.Request('get', url);
     req.headers.addAll(
@@ -22,16 +28,18 @@ class AppState extends State<App> {
     //async/await
     //js: usamos async/await para tratar promises
     //dart: usamos async/await para tratar futures
-    req.send().then((result){
-      if (result.statusCode == 200){
-        http.Response.fromStream(result).then((response){
-          print(response.body);
-        });
-      }
-      else{
-        print("Falhou");
-      }
-    });
+    final result = await req.send();
+    if (result.statusCode == 200){
+      final response = await http.Response.fromStream(result);
+      //transformar o JSON (que é string) num mapa
+      var decodedJSON = json.decode(response.body);
+      //transformar o mapa num objeto ImageModel
+      var imagem = ImageModel.fromJSON(decodedJSON);
+      setState(() {
+        currentPage++;
+        imagens.add(imagem);
+      });
+    }
   }
   @override
   Widget build(BuildContext context) {
@@ -43,7 +51,7 @@ class AppState extends State<App> {
         floatingActionButton: FloatingActionButton(
             onPressed: obterImagem,
             child: const Icon(Icons.add_a_photo_outlined)),
-        body: Text('$numeroImagens'),
+        body: ImageList(imagens)
       ),
     );
   }
